@@ -6,7 +6,8 @@ use jupiter_swap_api_client::{
 };
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{pubkey, transaction::VersionedTransaction};
-use solana_sdk::{pubkey::Pubkey, signature::NullSigner};
+use solana_sdk::{pubkey::Pubkey, signature::read_keypair_file};
+use solana_sdk::signer::Signer;
 use tokio;
 
 const USDC_MINT: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -22,9 +23,9 @@ async fn main() {
     let jupiter_swap_api_client = JupiterSwapApiClient::new(api_base_url);
 
     let quote_request = QuoteRequest {
-        amount: 1_000_000,
-        input_mint: USDC_MINT,
-        output_mint: NATIVE_MINT,
+        amount: 10_000_000,
+        input_mint: NATIVE_MINT,
+        output_mint: USDC_MINT,
         dexes: Some("Whirlpool,Meteora DLMM,Raydium CLMM".into()),
         slippage_bps: 50,
         ..QuoteRequest::default()
@@ -34,10 +35,15 @@ async fn main() {
     let quote_response = jupiter_swap_api_client.quote(&quote_request).await.unwrap();
     println!("{quote_response:#?}");
 
+    // Load keypair from default Solana config location
+    let keypair = read_keypair_file(&*shellexpand::tilde("~/.config/solana/id.json"))
+        .expect("Failed to read keypair file");
+    let wallet_pubkey = keypair.pubkey();
+
     // POST /swap
     let swap_response = jupiter_swap_api_client
         .swap(&SwapRequest {
-            user_public_key: TEST_WALLET,
+            user_public_key: wallet_pubkey,
             quote_response: quote_response.clone(),
             config: TransactionConfig::default(),
         })
@@ -45,14 +51,13 @@ async fn main() {
         .unwrap();
 
     println!("Raw tx len: {}", swap_response.swap_transaction.len());
-
+        // deserialize the transaction
     let versioned_transaction: VersionedTransaction =
         bincode::deserialize(&swap_response.swap_transaction).unwrap();
 
-    // Replace with a keypair or other struct implementing signer
-    let null_signer = NullSigner::new(&TEST_WALLET);
+    // Replace null_signer section with real signing
     let signed_versioned_transaction =
-        VersionedTransaction::try_new(versioned_transaction.message, &[&null_signer]).unwrap();
+        VersionedTransaction::try_new(versioned_transaction.message, &[&keypair]).unwrap();
 
     // send with rpc client...
     let rpc_client = RpcClient::new("https://api.mainnet-beta.solana.com".into());
@@ -67,7 +72,7 @@ async fn main() {
     // POST /swap-instructions
     let swap_instructions = jupiter_swap_api_client
         .swap_instructions(&SwapRequest {
-            user_public_key: TEST_WALLET,
+            user_public_key: wallet_pubkey,
             quote_response,
             config: TransactionConfig::default(),
         })
