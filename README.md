@@ -1,93 +1,114 @@
-# jup-swap-api-client
+Solana Jupiter Swap Integration
+A Rust implementation for performing token swaps on Solana using Jupiter's V6 API. This integration focuses on SOL to SPL token swaps(USDC by default swap USDC mint adress with the desired token address) with optimized transaction settings and dynamic slippage protection.
+🚀 Features
 
-## Introduction
+SOL to token swaps via Jupiter aggregator
+Dynamic priority fees with auto-multiplier
+Optimized DEX routing through:
 
-The `jup-swap-api-client` is a Rust client library designed to simplify the integration of the Jupiter Swap API, enabling seamless swaps on the Solana blockchain.
+Whirlpool
+Meteora DLMM
+Raydium CLMM
 
-## Getting Started
 
-To use the `jup-swap-api-client` crate in your Rust project, follow these simple steps:
+Dynamic slippage protection (0.5% - 5%)
+Dynamic compute unit limit estimation
+Environment variable configuration
+Transaction status monitoring with Solana explorer integration
 
-Add the crate to your `Cargo.toml`:
+📋 Prerequisites
 
-    ```toml
-    [dependencies]
-    jupiter-swap-api-client = { git = "https://github.com/jup-ag/jupiter-swap-api-client.git", package = "jupiter-swap-api-client"}
-    ```
+Rust (latest stable version)
+Solana CLI tools
+Funded Solana wallet (keypair at ~/.config/solana/id.json)
 
-## Examples
+🛠️ Installation
 
-Here's a simplified example of how to use the `jup-swap-api-client` in your Rust application:
+Clone the repository:
 
-```rust
-use jupiter_swap_api_client::{
-    quote::QuoteRequest, swap::SwapRequest, transaction_config::TransactionConfig,
-    JupiterSwapApiClient,
+bashCopygit clone https://github.com/yourusername/solana-jupiter-swap
+cd solana-jupiter-swap
+
+Create a .env file:
+
+envCopyAPI_BASE_URL=https://quote-api.jup.ag/v6
+
+Install dependencies:
+
+bashCopycargo build
+💻 Usage
+Run the swap program:
+bashCopycargo run
+Implementation Details
+The program performs a SOL to USDC swap with the following specifications:
+rustCopylet quote_request = QuoteRequest {
+    amount: 1_000_000,  // 0.001 SOL
+    input_mint: NATIVE_MINT,  // SOL
+    output_mint: USDC_MINT,   // USDC
+    dexes: Some("Whirlpool,Meteora DLMM,Raydium CLMM".into()),
+    slippage_bps: 50,         // 0.5% base slippage
+    ..QuoteRequest::default()
 };
-use solana_sdk::pubkey::Pubkey;
-
-const USDC_MINT: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const NATIVE_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
-const TEST_WALLET: Pubkey = pubkey!("2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm");
-
-#[tokio::main]
-async fn main() {
-    let jupiter_swap_api_client = JupiterSwapApiClient::new("https://quote-api.jup.ag/v6");
-
-    let quote_request = QuoteRequest {
-        amount: 1_000_000,
-        input_mint: USDC_MINT,
-        output_mint: NATIVE_MINT,
-        slippage_bps: 50,
-        ..QuoteRequest::default()
-    };
-
-    // GET /quote
-    let quote_response = jupiter_swap_api_client.quote(&quote_request).await.unwrap();
-    println!("{quote_response:#?}");
-
-    // POST /swap
-    let swap_response = jupiter_swap_api_client
-        .swap(&SwapRequest {
-            user_public_key: TEST_WALLET,
-            quote_response: quote_response.clone(),
-            config: TransactionConfig::default(),
-        })
-        .await
-        .unwrap();
-
-    println!("Raw tx len: {}", swap_response.swap_transaction.len());
-
-    // Perform further actions as needed...
-
-    // POST /swap-instructions
-    let swap_instructions = jupiter_swap_api_client
-        .swap_instructions(&SwapRequest {
-            user_public_key: TEST_WALLET,
-            quote_response,
-            config: TransactionConfig::default(),
-        })
-        .await
-        .unwrap();
-    println!("{swap_instructions:#?}");
+Transaction Configuration
+The implementation uses optimized transaction settings:
+rustCopyTransactionConfig {
+    wrap_and_unwrap_sol: true,
+    prioritization_fee_lamports: Some(PrioritizationFeeLamports::AutoMultiplier(2)),
+    dynamic_compute_unit_limit: true,
+    dynamic_slippage: Some(DynamicSlippageSettings {
+        min_bps: Some(50),   // 0.5% minimum slippage
+        max_bps: Some(500)   // 5% maximum slippage
+    }),
+    // ... other optimized defaults
 }
+⚙️ Key Components
 
-```
-For the full example, please refer to the [examples](./example/) directory in this repository.
+Priority Fee System
 
-### Using Self-hosted APIs
+Uses Auto-multiplier (2x) for dynamic fee calculation
+Automatically adjusts based on network conditions
 
-You can set custom URLs via environment variables for any self-hosted Jupiter APIs. Like the [V6 Swap API](https://station.jup.ag/docs/apis/self-hosted) or the [paid hosted APIs](#paid-hosted-apis). Here are the ENV vars:
 
-```
-API_BASE_URL=https://hosted.api
-```
+Slippage Protection
 
-### Paid Hosted APIs
+Dynamic range: 0.5% - 5%
+Adjusts based on market conditions
 
-You can also check out some of the [paid hosted APIs](https://station.jup.ag/docs/apis/self-hosted#paid-hosted-apis).
 
-## Additional Resources
+DEX Integration
 
-- [Jupiter Swap API Documentation](https://station.jup.ag/docs/v6/swap-api): Learn more about the Jupiter Swap API and its capabilities.
-- [jup.ag Website](https://jup.ag/): Explore the official website for additional information and resources.
+Whirlpool
+Meteora DLMM
+Raydium CLMM
+
+
+Transaction Monitoring
+
+Success/failure status tracking
+Solana Explorer integration
+
+
+
+
+📁 Project Structure
+Copy.
+├── src/
+│   └── main.rs           # Main implementation file
+├── Cargo.toml            # Dependencies and project config
+├── .env                  # Environment variables
+└── README.md            # Documentation
+
+
+🤝 Contributing
+
+Fork the repository
+Create your feature branch
+Commit your changes
+Push to the branch
+Open a Pull Request
+
+⚠️ To Keep in Mind
+
+Currently configured for SOL to USDC by default
+Requires local keypair file for signature 
+Uses public RPC endpoint you can swap out your api keys 
