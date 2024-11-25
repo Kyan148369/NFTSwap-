@@ -26,48 +26,47 @@ A Rust implementation for performing token swaps on Solana using Jupiter's V6 AP
    ```
    git clone https://github.com/Kyan148369/NFTSwap-.git
    cd solana-jupiter-swap
-  ```
+  
 
 2.Install dependencies:
-```
-Cargo build
-```
+    ```
+    Cargo build
+    ```
 3. Run the swap program
 
-``` 
-Cargo run
-```
+    ``` 
+    Cargo run
 
 
 Implementation Details
 The program performs a SOL to USDC swap with the following specifications:
 
-```
-let quote_request = QuoteRequest {
-    amount: 1_000_000, // 0.001 SOL
-    input_mint: NATIVE_MINT, // SOL
-    output_mint: USDC_MINT, // USDC
-    dexes: Some("Whirlpool,Meteora DLMM,Raydium CLMM".into()),
-    slippage_bps: 50, // 0.5% base slippage
-    ..QuoteRequest::default()
+    ```
+        let quote_request = QuoteRequest {
+        amount: 1_000_000, // 0.001 SOL
+        input_mint: NATIVE_MINT, // SOL
+        output_mint: USDC_MINT, // USDC
+        dexes: Some("Whirlpool,Meteora DLMM,Raydium CLMM".into()),
+        slippage_bps: 50, // 0.5% base slippage
+        ..QuoteRequest::default()
 };
+
 ```
 
 Transaction Configuration
 The implementation uses optimized transaction settings:
 
 ```
-TransactionConfig {
-    wrap_and_unwrap_sol: true,
-    prioritization_fee_lamports: Some(PrioritizationFeeLamports::AutoMultiplier(2)),
-    dynamic_compute_unit_limit: true,
-    dynamic_slippage: Some(DynamicSlippageSettings {
-        min_bps: Some(50), // 0.5% minimum slippage
-        max_bps: Some(500) // 5% maximum slippage
-    }),
-    // ... other optimized defaults 
-}
-```
+    TransactionConfig {
+        wrap_and_unwrap_sol: true,
+        prioritization_fee_lamports: Some(PrioritizationFeeLamports::AutoMultiplier(2)),
+        dynamic_compute_unit_limit: true,
+        dynamic_slippage: Some(DynamicSlippageSettings {
+            min_bps: Some(50), // 0.5% minimum slippage
+            max_bps: Some(500) // 5% maximum slippage
+        }),
+        // ... other optimized defaults 
+    }
 Key Components
 *Priority Fee System
     *Uses Auto-multiplier (2x) for dynamic fee calculation.
